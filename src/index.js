@@ -5,7 +5,8 @@ import babylon from 'prettier/parser-babylon';
 
 import parse from './parse';
 import type { Options } from './options';
-import type { SlateModel } from './types';
+import type { SlateModel, SlateSchema } from './types';
+import { Schema } from "slate";
 
 const DEFAULT_OPTIONS: Options = {
     preserveKeys: false,
@@ -19,10 +20,15 @@ const DEFAULT_OPTIONS: Options = {
 
 function hyperprint(
     model: SlateModel,
+    schema?: SlateSchema,
     optionsParam?: Options = DEFAULT_OPTIONS
 ) {
     if (!model) {
         throw new Error('slate-hyperprint: Expected a Slate model');
+    }
+
+    if (!schema) {
+        schema = Schema.create({});
     }
 
     const options = {
@@ -30,7 +36,7 @@ function hyperprint(
         ...optionsParam
     };
 
-    const printed = parse(model, options)
+    const printed = parse(model, schema, options)
         .map(tag => tag.print(options))
         .join('\n');
 

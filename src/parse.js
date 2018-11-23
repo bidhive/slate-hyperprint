@@ -1,46 +1,45 @@
 // @flow
-import type { SlateModel } from "./types";
+import type { SlateModel, SlateSchema } from "./types";
 import type { Options } from "./options";
 import Tag from "./tag";
 import { printString } from "./utils";
-import schema from "./schema";
 
 // All Tag parsers
 const PARSERS = {
-  value: (value, options) => [
+  value: (value, schema, options) => [
     Tag.create({
       name: "value",
-      attributes: getAttributes(value, options),
-      children: parse(value.document, options)
+      attributes: getAttributes(value, schema, options),
+      children: parse(value.document, schema, options)
     })
   ],
   // COMPAT
-  state: (state, options) => PARSERS.value(state, options),
-  document: (document, options) => [
+  state: (state, schema, options) => PARSERS.value(state, schema, options),
+  document: (document, schema, options) => [
     Tag.create({
       name: "document",
-      attributes: getAttributes(document, options, false),
-      children: document.nodes.flatMap(node => parse(node, options)).toArray()
+      attributes: getAttributes(document, schema, options, false),
+      children: document.nodes.flatMap(node => parse(node, schema, options)).toArray()
     })
   ],
-  block: (block, options) => [
+  block: (block, schema, options) => [
     Tag.create({
       name: canPrintAsShorthand(block) ? block.type : block.object,
-      attributes: getAttributes(block, options, canPrintAsShorthand(block)),
-      children: schema.isVoid(block) ? [] : block.nodes.flatMap(node => parse(node, options)).toArray()
+      attributes: getAttributes(block, schema, options, canPrintAsShorthand(block)),
+      children: schema.isVoid(block) ? [] : block.nodes.flatMap(node => parse(node, schema, options)).toArray()
     })
   ],
-  inline: (inline, options) => [
+  inline: (inline, schema, options) => [
     Tag.create({
       name: canPrintAsShorthand(inline) ? inline.type : inline.object,
-      attributes: getAttributes(inline, options, canPrintAsShorthand(inline)),
-      children: inline.nodes.flatMap(node => parse(node, options)).toArray()
+      attributes: getAttributes(inline, schema, options, canPrintAsShorthand(inline)),
+      children: schema.isVoid(inline) ? [] : inline.nodes.flatMap(node => parse(node, schema, options)).toArray()
     })
   ],
-  text: (text, options) => {
+  text: (text, schema, options) => {
     // COMPAT
     const leaves = text.getLeaves ? text.getLeaves() : text.getRanges();
-    const leavesTags = leaves.flatMap(leaf => parse(leaf, options)).toArray();
+    const leavesTags = leaves.flatMap(leaf => parse(leaf, schema, options)).toArray();
     if (options.preserveKeys) {
       return [
         Tag.create({
@@ -60,12 +59,12 @@ const PARSERS = {
 
     return leavesTags;
   },
-  leaf: (leaf, options) =>
+  leaf: (leaf, schema, options) =>
     leaf.marks.reduce(
       (acc, mark) => [
         Tag.create({
           name: canPrintAsShorthand(mark) ? mark.type : mark.object,
-          attributes: getAttributes(mark, options, canPrintAsShorthand(mark)),
+          attributes: getAttributes(mark, schema, options, canPrintAsShorthand(mark)),
           children: acc
         })
       ],
@@ -76,7 +75,7 @@ const PARSERS = {
       ]
     ),
   // COMPAT
-  range: (range, options) => PARSERS.leaf(range, options)
+  range: (range, schema, options) => PARSERS.leaf(range, schema, options)
 };
 
 /*
@@ -84,6 +83,7 @@ const PARSERS = {
  */
 function getAttributes(
   model: SlateModel,
+  schema: SlateSchema,
   options: Options,
   // True to spread the data as attributes.
   // False to keep it under `data` and to make `type` explicit
@@ -120,13 +120,13 @@ function getAttributes(
 /*
  * Parse a Slate model to a Tag representation
  */
-function parse(model: SlateModel, options: Options): Tag[] {
+function parse(model: SlateModel, schema: SlateSchema, options: Options): Tag[] {
   const object = model.object || model.kind;
   const parser = PARSERS[object];
   if (!parser) {
     throw new Error(`Unrecognized Slate model ${object}`);
   }
-  return parser(model, options);
+  return parser(model, schema, options);
 }
 
 /*

@@ -1,8 +1,21 @@
 import assert from "assert";
 import fs from "fs";
 import { basename, extname, resolve } from "path";
-import { KeyUtils } from "slate";
+import { KeyUtils, Schema } from "slate";
 import hyperprint from "../src";
+
+const schema = Schema.create({
+  blocks: {
+    image: {
+      isVoid: true
+    }
+  },
+  inlines: {
+    link: {
+      isVoid: true
+    }
+  }
+})
 
 /**
  * Tests.
@@ -21,7 +34,7 @@ describe("slate-hyperprint", () => {
       // eslint-disable-next-line
       const module = require(resolve(fixturesDir, test));
       const { input, output, options } = module;
-      const actual = hyperprint(input, options);
+      const actual = hyperprint(input, schema, options);
       const expected = output.trim();
 
       assert.equal(actual, expected);
